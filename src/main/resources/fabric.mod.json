@@ -1,0 +1,28 @@
+{
+    "schemaVersion": 1,
+    "id": "better-bundle",
+    "version": "${version}",
+    "name": "Better Bundle",
+    "description": "Adds a side panel to the inventory for quick bundle access",
+    "authors": [],
+    "contact": {},
+    "license": "MIT",
+    "environment": "client",
+    "entrypoints": {
+        "client": [
+            "betterbundle.BetterBundleMod"
+        ]
+    },
+    "accessWidener": "better-bundle.accesswidener",
+    "mixins": [
+        {
+            "config": "better-bundle.client.mixins.json",
+            "environment": "client"
+        }
+    ],
+    "depends": {
+        "fabricloader": ">=0.18.4",
+        "minecraft": ">=26.1",
+        "java": ">=25"
+    }
+}
