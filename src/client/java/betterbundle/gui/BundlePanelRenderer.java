@@ -12,6 +12,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.BundleContents;
+import org.apache.commons.lang3.math.Fraction;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -38,6 +39,7 @@ public final class BundlePanelRenderer {
     public static String searchQuery = "";
     public static boolean searchFocused = false;
     private static int searchCursorTick = 0;
+    private static int hoveredBundleSlot = -1;
 
     public static BundleCategory currentCategory = BundleCategory.ALL;
 
@@ -154,6 +156,7 @@ public final class BundlePanelRenderer {
         return false;
     }
 
+    public static int getHoveredBundleSlot() { return visible ? hoveredBundleSlot : -1; }
     public static boolean isEffectivelyVisible() { return visible && !isRecipeBookOpen(); }
     public static void toggleVisible() { visible = !visible; }
 
@@ -321,6 +324,9 @@ public final class BundlePanelRenderer {
             int hy = gridY + hRow * (SLOT_SIZE + SLOT_SPACING);
             graphics.fill(hx, hy, hx + SLOT_SIZE, hy + SLOT_SIZE, 0x80FFFFFF);
             graphics.setTooltipForNextFrame(client.font, items.get(hoveredFlatIndex).stack(), mouseX, mouseY);
+            hoveredBundleSlot = items.get(hoveredFlatIndex).bundleSlot();
+        } else {
+            hoveredBundleSlot = -1;
         }
 
         // Search bar (always visible, only interactive in ALL mode)
@@ -351,5 +357,32 @@ public final class BundlePanelRenderer {
             graphics.text(font, label, panelX + 16 + 3, panelY + 2, 0xFFCCCCCC, false);
         }
 
+        // Bundle count display (bottom-right of grid)
+        int[] stats = getBundleStats();
+        String countText = stats[0] + "/" + stats[1];
+        int textW = font.width(countText);
+        int countX = gridX + COLUMNS * (SLOT_SIZE + SLOT_SPACING) - SLOT_SPACING - textW;
+        int countY = gridY + VISIBLE_ROWS * SLOT_SIZE + (VISIBLE_ROWS - 1) * SLOT_SPACING + 7;
+        graphics.fill(countX - 2, countY, countX + textW + 2, countY + font.lineHeight, 0xC0101010);
+        graphics.text(font, countText, countX, countY, 0xFFAAAAAA, false);
+
+    }
+
+    private static int[] getBundleStats() {
+        List<BundleSlotEntry> all = getAllBundles();
+        int totalItems = 0;
+        Fraction totalWeight = Fraction.ZERO;
+        for (BundleSlotEntry entry : all) {
+            BundleContents c = entry.contents();
+            if (c != null && !c.isEmpty()) {
+                totalItems += c.itemCopyStream().mapToInt(ItemStack::getCount).sum();
+                totalWeight = totalWeight.add(c.weight().result().orElse(Fraction.ZERO));
+            }
+        }
+        // remaining weight → how many more "standard" items (weight 1/64) would fit
+        Fraction maxWeight = Fraction.getFraction(all.size(), 1);
+        Fraction remaining = maxWeight.subtract(totalWeight);
+        int effectiveMax = totalItems + remaining.multiplyBy(Fraction.getFraction(64, 1)).intValue();
+        return new int[] { totalItems, effectiveMax };
     }
 }
