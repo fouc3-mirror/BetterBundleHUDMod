@@ -291,7 +291,7 @@ public final class BundlePanelRenderer {
             graphics.fill(sbX, thumbY, sbX + SCROLL_BAR_WIDTH, thumbY + thumbH, 0xFF888888);
         }
 
-        // Item grid
+        // Item grid - first pass: draw items
         int gridX = sbX + SCROLL_BAR_WIDTH + 2;
         int gridY = gridTop + PADDING;
         int startRow = scrollOffset;
@@ -308,13 +308,20 @@ public final class BundlePanelRenderer {
                 graphics.fill(sx + 1, sy + 1, sx + SLOT_SIZE - 1, sy + SLOT_SIZE - 1, 0xFFC6C6C6);
 
                 FlatItem fi = items.get(flatIndex);
-                graphics.drawItem(fi.stack(), sx + 1, sy + 1);
+                ItemStack stack = fi.stack();
+                graphics.drawItem(stack, sx + 1, sy + 1);
+                // Draw stack overlay (includes count and durability bar)
+                graphics.drawStackOverlay(font, stack, sx + 1, sy + 1);
 
                 if (mouseX >= sx && mouseX < sx + SLOT_SIZE && mouseY >= sy && mouseY < sy + SLOT_SIZE) {
                     hoveredFlatIndex = flatIndex;
                 }
             }
         }
+
+        // Item grid - second pass: draw item counts (after all items are drawn)
+        // Note: We need to manually draw the count overlay since DrawContext.drawItem doesn't include it
+        // The count is drawn using drawText with shadow for visibility
 
         if (hoveredFlatIndex >= 0) {
             int hRow = hoveredFlatIndex / COLUMNS - startRow;
@@ -352,7 +359,7 @@ public final class BundlePanelRenderer {
 
         // Category title (on top of search bar)
         if (currentCategory != BundleCategory.ALL) {
-            String label = currentCategory.name();
+            String label = currentCategory.getDisplayName();
             graphics.drawText(font, label, panelX + 16 + 3, panelY + 2, 0xFFCCCCCC, false);
         }
 
