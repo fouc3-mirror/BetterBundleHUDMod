@@ -18,6 +18,9 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Collections;
 
 import betterbundle.util.BundleContentsComponentHelper;
 import betterbundle.config.BetterBundleConfig;
@@ -40,7 +43,7 @@ public final class BundlePanelRenderer {
     public static String searchQuery = "";
     public static boolean searchFocused = false;
     private static int searchCursorTick = 0;
-    private static int hoveredBundleSlot = -1;
+    private static List<Integer> hoveredBundleSlots = Collections.emptyList();
 
     public static BundleCategory currentCategory = BundleCategory.ALL;
 
@@ -66,18 +69,80 @@ public final class BundlePanelRenderer {
         scrollOffset = Math.clamp(scrollOffset + delta, 0, maxScroll);
     }
 
-    public record FlatItem(int bundleSlot, int itemIndex, ItemStack stack) {}
+    public record FlatItem(List<Integer> bundleSlots, int itemIndex, ItemStack stack, int mergedCount) {
+        public FlatItem(int bundleSlot, int itemIndex, ItemStack stack) {
+            this(List.of(bundleSlot), itemIndex, stack, 1);
+        }
+        
+        public int bundleSlot() {
+            return bundleSlots.get(0);
+        }
+    }
 
     public static List<FlatItem> buildFlatItemList(List<BundleSlotEntry> bundles) {
-        List<FlatItem> result = new ArrayList<>();
+        List<FlatItem> rawItems = new ArrayList<>();
         for (BundleSlotEntry entry : bundles) {
             if (entry.contents() == null) continue;
             List<ItemStack> items = entry.contents().stream().map(ItemStack::copy).toList();
             for (int i = 0; i < items.size(); i++) {
-                result.add(new FlatItem(entry.bundleSlot(), i, items.get(i)));
+                rawItems.add(new FlatItem(entry.bundleSlot(), i, items.get(i)));
             }
         }
-        return result;
+        
+        // If stackSameNbt is enabled, merge items with same NBT
+        if (BetterBundleConfig.getInstance().stackSameNbt()) {
+            return mergeSameNbtItems(rawItems);
+        }
+        
+        return rawItems;
+    }
+    
+    /**
+     * Merge items with same item type and NBT data.
+     * Collects all bundle slots for highlighting.
+     */
+    private static List<FlatItem> mergeSameNbtItems(List<FlatItem> items) {
+        Map<String, List<FlatItem>> grouped = new HashMap<>();
+        
+        for (FlatItem fi : items) {
+            String key = getItemNbtKey(fi.stack());
+            grouped.computeIfAbsent(key, k -> new ArrayList<>()).add(fi);
+        }
+        
+        List<FlatItem> merged = new ArrayList<>();
+        for (List<FlatItem> group : grouped.values()) {
+            if (group.size() == 1) {
+                merged.add(group.get(0));
+            } else {
+                // Merge: collect all bundle slots, sum counts
+                FlatItem first = group.get(0);
+                List<Integer> allBundleSlots = new ArrayList<>();
+                int totalCount = 0;
+                for (FlatItem fi : group) {
+                    allBundleSlots.addAll(fi.bundleSlots());
+                    totalCount += fi.stack().getCount();
+                }
+                ItemStack mergedStack = first.stack().copy();
+                mergedStack.setCount(totalCount);
+                merged.add(new FlatItem(allBundleSlots, first.itemIndex(), mergedStack, group.size()));
+            }
+        }
+        
+        return merged;
+    }
+    
+    /**
+     * Generate a key for item + NBT comparison.
+     */
+    private static String getItemNbtKey(ItemStack stack) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(Registries.ITEM.getId(stack.getItem()).toString());
+        // Include NBT components
+        var components = stack.getComponents();
+        if (components != null) {
+            sb.append("|").append(components.toString());
+        }
+        return sb.toString();
     }
 
     public static List<FlatItem> filterItems(List<FlatItem> items, String query) {
@@ -157,7 +222,8 @@ public final class BundlePanelRenderer {
         return false;
     }
 
-    public static int getHoveredBundleSlot() { return visible ? hoveredBundleSlot : -1; }
+    public static List<Integer> getHoveredBundleSlots() { return visible ? hoveredBundleSlots : Collections.emptyList(); }
+    public static int getHoveredBundleSlot() { return visible && !hoveredBundleSlots.isEmpty() ? hoveredBundleSlots.get(0) : -1; }
     public static boolean isEffectivelyVisible() { return visible && !isRecipeBookOpen(); }
     public static void toggleVisible() { visible = !visible; }
 
@@ -333,9 +399,9 @@ public final class BundlePanelRenderer {
             int hy = gridY + hRow * (SLOT_SIZE + SLOT_SPACING);
             graphics.fill(hx, hy, hx + SLOT_SIZE, hy + SLOT_SIZE, 0x80FFFFFF);
             graphics.drawItemTooltip(client.textRenderer, items.get(hoveredFlatIndex).stack(), mouseX, mouseY);
-            hoveredBundleSlot = items.get(hoveredFlatIndex).bundleSlot();
+            hoveredBundleSlots = items.get(hoveredFlatIndex).bundleSlots();
         } else {
-            hoveredBundleSlot = -1;
+            hoveredBundleSlots = Collections.emptyList();
         }
 
         // Search bar (always visible, only interactive in ALL mode)

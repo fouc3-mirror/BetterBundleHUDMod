@@ -39,6 +39,16 @@ public class ModMenuCompat implements ModMenuApi {
                 .setSaveConsumer(value -> config.setShowStackOverlay(value))
                 .build());
         
+        // Stack same NBT items option
+        general.addEntry(entryBuilder.startBooleanToggle(
+                Text.translatable("config.better-bundle.option.stackSameNbt"),
+                config.stackSameNbt()
+        )
+                .setDefaultValue(true)
+                .setTooltip(Text.translatable("config.better-bundle.option.stackSameNbt.tooltip"))
+                .setSaveConsumer(value -> config.setStackSameNbt(value))
+                .build());
+        
         return builder.build();
     }
 }

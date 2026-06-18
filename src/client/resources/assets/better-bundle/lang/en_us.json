@@ -2,5 +2,7 @@
     "config.better-bundle.title": "Better Bundle Configuration",
     "config.better-bundle.category.general": "General",
     "config.better-bundle.option.showStackOverlay": "Show Stack Overlay",
-    "config.better-bundle.option.showStackOverlay.tooltip": "Display item count and durability bar on items in the bundle panel"
+    "config.better-bundle.option.showStackOverlay.tooltip": "Display item count and durability bar on items in the bundle panel",
+    "config.better-bundle.option.stackSameNbt": "Stack Same NBT Items",
+    "config.better-bundle.option.stackSameNbt.tooltip": "Merge items with same NBT data from different bundles in the GUI display"
 }

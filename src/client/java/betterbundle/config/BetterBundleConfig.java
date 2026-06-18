@@ -12,8 +12,9 @@ import java.util.Properties;
 public class BetterBundleConfig {
     private static final Path CONFIG_PATH = Path.of("config/better-bundle.properties");
     
-    // Config options - stack overlay includes both count and durability bar
+    // Config options
     private boolean showStackOverlay = true;
+    private boolean stackSameNbt = true; // Merge items with same NBT in GUI
     
     private static BetterBundleConfig instance;
     
@@ -36,6 +37,7 @@ public class BetterBundleConfig {
             props.load(is);
             
             showStackOverlay = Boolean.parseBoolean(props.getProperty("showStackOverlay", "true"));
+            stackSameNbt = Boolean.parseBoolean(props.getProperty("stackSameNbt", "true"));
         } catch (IOException e) {
             // Ignore errors, use defaults
         }
@@ -47,6 +49,7 @@ public class BetterBundleConfig {
             
             Properties props = new Properties();
             props.setProperty("showStackOverlay", String.valueOf(showStackOverlay));
+            props.setProperty("stackSameNbt", String.valueOf(stackSameNbt));
             
             try (OutputStream os = Files.newOutputStream(CONFIG_PATH)) {
                 props.store(os, "BetterBundleHUD Configuration");
@@ -62,6 +65,15 @@ public class BetterBundleConfig {
     
     public void setShowStackOverlay(boolean value) {
         showStackOverlay = value;
+        save();
+    }
+    
+    public boolean stackSameNbt() {
+        return stackSameNbt;
+    }
+    
+    public void setStackSameNbt(boolean value) {
+        stackSameNbt = value;
         save();
     }
 }

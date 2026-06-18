@@ -12,6 +12,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import java.util.List;
+
 @Mixin(HandledScreen.class)
 public abstract class InventoryScreenMixin {
 
@@ -24,9 +26,9 @@ public abstract class InventoryScreenMixin {
                 self.backgroundHeight,
                 mouseX, mouseY);
 
-        // Enlarge the bundle icon for the hovered panel item
-        int bundleSlot = BundlePanelRenderer.getHoveredBundleSlot();
-        if (bundleSlot >= 0) {
+        // Enlarge the bundle icons for all hovered panel items (supports merged items)
+        List<Integer> bundleSlots = BundlePanelRenderer.getHoveredBundleSlots();
+        for (int bundleSlot : bundleSlots) {
             Slot slot = self.getScreenHandler().getSlot(bundleSlot);
             if (slot != null && slot.hasStack()) {
                 int sx = self.x + slot.x;
