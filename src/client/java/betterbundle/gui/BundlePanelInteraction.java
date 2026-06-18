@@ -1,20 +1,19 @@
 package betterbundle.gui;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ClientPacketListener;
-import net.minecraft.network.HashedStack;
-import net.minecraft.network.protocol.game.ServerboundContainerClickPacket;
-import net.minecraft.network.protocol.game.ServerboundSelectBundleItemPacket;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.ContainerInput;
-import net.minecraft.world.inventory.Slot;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.network.ClientPlayNetworkHandler;
+import net.minecraft.network.packet.c2s.play.ClickSlotC2SPacket;
+import net.minecraft.network.packet.c2s.play.BundleItemSelectedC2SPacket;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.screen.slot.SlotActionType;
+import net.minecraft.screen.slot.Slot;
+import net.minecraft.item.ItemStack;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
 
-import betterbundle.util.BundleContentsHelper;
+import betterbundle.util.BundleContentsComponentHelper;
 
 public final class BundlePanelInteraction {
 
@@ -65,23 +64,23 @@ public final class BundlePanelInteraction {
 
     public static boolean handlePanelClick(double mouseX, double mouseY, int button, int modifiers,
                                             int leftPos, int topPos,
-                                            net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?> screen) {
+                                            net.minecraft.client.gui.screen.ingame.HandledScreen<?> screen) {
         BundlePanelRenderer.FlatItem clicked = getClickedItem(mouseX, mouseY, leftPos, topPos);
         if (clicked == null) return false;
 
-        Minecraft client = Minecraft.getInstance();
-        Player player = client.player;
+        MinecraftClient client = MinecraftClient.getInstance();
+        PlayerEntity player = client.player;
         if (player == null) return false;
 
-        ClientPacketListener connection = client.getConnection();
+        ClientPlayNetworkHandler connection = client.getNetworkHandler();
         if (connection == null) return false;
 
         int bundleSlot = clicked.bundleSlot();
-        int containerId = player.containerMenu.containerId;
+        int syncId = player.currentScreenHandler.syncId;
         boolean shiftDown = (modifiers & GLFW_MOD_SHIFT) != 0;
 
         if (shiftDown) {
-            boolean inContainer = !(screen instanceof net.minecraft.client.gui.screens.inventory.InventoryScreen);
+            boolean inContainer = !(screen instanceof net.minecraft.client.gui.screen.ingame.InventoryScreen);
             int emptySlot;
             if (button == 0 && inContainer) {
                 emptySlot = findEmptyContainerSlot(player) >= 0
@@ -93,78 +92,76 @@ public final class BundlePanelInteraction {
 
             int count = clicked.stack().getCount();
             for (int i = 0; i < count; i++) {
-                connection.send(new ServerboundSelectBundleItemPacket(bundleSlot, clicked.itemIndex()));
-                connection.send(makeClickPacket(containerId, bundleSlot, (byte) 1));
+                connection.sendPacket(new BundleItemSelectedC2SPacket(bundleSlot, clicked.itemIndex()));
+                connection.sendPacket(makeClickPacket(syncId, bundleSlot, (byte) 1));
             }
-            connection.send(makeClickPacket(containerId, emptySlot, (byte) 0));
+            connection.sendPacket(makeClickPacket(syncId, emptySlot, (byte) 0));
         } else {
-            connection.send(new ServerboundSelectBundleItemPacket(bundleSlot, clicked.itemIndex()));
-            connection.send(makeClickPacket(containerId, bundleSlot, (byte) 1));
+            connection.sendPacket(new BundleItemSelectedC2SPacket(bundleSlot, clicked.itemIndex()));
+            connection.sendPacket(makeClickPacket(syncId, bundleSlot, (byte) 1));
         }
 
         return true;
     }
 
     /** Find an empty slot in the open container (not the player inventory). */
-    private static int findEmptyContainerSlot(Player player) {
-        for (net.minecraft.world.inventory.Slot slot : player.containerMenu.slots) {
-            if (!slot.hasItem() && slot.container != player.getInventory()) {
-                return slot.index;
+    private static int findEmptyContainerSlot(PlayerEntity player) {
+        for (net.minecraft.screen.slot.Slot slot : player.currentScreenHandler.slots) {
+            if (!slot.hasStack() && slot.inventory != player.getInventory()) {
+                return slot.id;
             }
         }
         return -1;
     }
 
     public static boolean handleSpaceClick(Slot hoveredSlot) {
-        if (hoveredSlot == null || !hoveredSlot.hasItem()) return false;
+        if (hoveredSlot == null || !hoveredSlot.hasStack()) return false;
 
-        Minecraft client = Minecraft.getInstance();
+        MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null || client.getWindow() == null) return false;
 
-        long window = client.getWindow().handle();
+        long window = client.getWindow().getHandle();
         if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_SPACE) != GLFW.GLFW_PRESS) return false;
 
-        Player player = client.player;
-        ItemStack stack = hoveredSlot.getItem();
-        if (stack.isEmpty() || BundleContentsHelper.isNonEmptyBundle(stack)) return false;
+        PlayerEntity player = client.player;
+        ItemStack stack = hoveredSlot.getStack();
+        if (stack.isEmpty() || BundleContentsComponentHelper.isNonEmptyBundle(stack)) return false;
 
         List<BundlePanelRenderer.BundleSlotEntry> bundles = BundlePanelRenderer.getAllBundles();
         int targetBundleSlot = -1;
         for (BundlePanelRenderer.BundleSlotEntry entry : bundles) {
-            if (BundleContentsHelper.canFitItem(entry.bundleStack(), stack)) {
+            if (BundleContentsComponentHelper.canFitItem(entry.bundleStack(), stack)) {
                 targetBundleSlot = entry.bundleSlot();
                 break;
             }
         }
         if (targetBundleSlot < 0) return false;
 
-        ClientPacketListener connection = client.getConnection();
+        ClientPlayNetworkHandler connection = client.getNetworkHandler();
         if (connection == null) return false;
 
-        int containerId = player.containerMenu.containerId;
-        int itemSlot = hoveredSlot.index;
+        int syncId = player.currentScreenHandler.syncId;
+        int itemSlot = hoveredSlot.id;
 
-        connection.send(makeClickPacket(containerId, itemSlot, (byte) 0));
-        connection.send(makeClickPacket(containerId, targetBundleSlot, (byte) 0));
+        connection.sendPacket(makeClickPacket(syncId, itemSlot, (byte) 0));
+        connection.sendPacket(makeClickPacket(syncId, targetBundleSlot, (byte) 0));
 
         return true;
     }
 
-    private static ServerboundContainerClickPacket makeClickPacket(int containerId, int slot, byte button) {
-        return new ServerboundContainerClickPacket(
-                containerId, -1, (short) slot, button,
-                ContainerInput.PICKUP, new Int2ObjectOpenHashMap<>(), HashedStack.EMPTY);
+    private static ClickSlotC2SPacket makeClickPacket(int syncId, int slot, byte button) {
+        return PacketHelper.createClickPacket(syncId, slot, button);
     }
 
-    private static int findEmptyPlayerSlot(Player player) {
+    private static int findEmptyPlayerSlot(PlayerEntity player) {
         // search main inventory (getSlotIndex 9-35) then hotbar (getSlotIndex 0-8)
         for (int pass = 0; pass < 2; pass++) {
             int min = (pass == 0) ? 9 : 0;
             int max = (pass == 0) ? 36 : 9;
-            for (Slot slot : player.containerMenu.slots) {
-                if (slot.container == player.getInventory() && !slot.hasItem()) {
-                    int idx = slot.getContainerSlot();
-                    if (idx >= min && idx < max) return slot.index;
+            for (Slot slot : player.currentScreenHandler.slots) {
+                if (slot.inventory == player.getInventory() && !slot.hasStack()) {
+                    int idx = slot.getIndex();
+                    if (idx >= min && idx < max) return slot.id;
                 }
             }
         }
@@ -192,27 +189,27 @@ public final class BundlePanelInteraction {
     /** Put cursor item into any available bundle.
      *  button 0 = left (insert all), 1 = right (insert one). */
     public static boolean handlePanelInsert(int button) {
-        Minecraft client = Minecraft.getInstance();
-        Player player = client.player;
+        MinecraftClient client = MinecraftClient.getInstance();
+        PlayerEntity player = client.player;
         if (player == null) return false;
 
-        ItemStack cursor = player.containerMenu.getCarried();
+        ItemStack cursor = player.currentScreenHandler.getCursorStack();
         if (cursor.isEmpty()) return false;
 
         List<BundlePanelRenderer.BundleSlotEntry> bundles = BundlePanelRenderer.getAllBundles();
         int targetBundleSlot = -1;
         for (BundlePanelRenderer.BundleSlotEntry entry : bundles) {
-            if (BundleContentsHelper.canFitItem(entry.bundleStack(), cursor)) {
+            if (BundleContentsComponentHelper.canFitItem(entry.bundleStack(), cursor)) {
                 targetBundleSlot = entry.bundleSlot();
                 break;
             }
         }
         if (targetBundleSlot < 0) return false;
 
-        ClientPacketListener connection = client.getConnection();
+        ClientPlayNetworkHandler connection = client.getNetworkHandler();
         if (connection == null) return false;
-        int containerId = player.containerMenu.containerId;
-        connection.send(makeClickPacket(containerId, targetBundleSlot, (byte) button));
+        int syncId = player.currentScreenHandler.syncId;
+        connection.sendPacket(makeClickPacket(syncId, targetBundleSlot, (byte) button));
         return true;
     }
 

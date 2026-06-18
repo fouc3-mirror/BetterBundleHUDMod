@@ -3,15 +3,15 @@ package betterbundle.gui;
 import net.sourceforge.pinyin4j.PinyinHelper;
 import net.sourceforge.pinyin4j.format.HanyuPinyinOutputFormat;
 import net.sourceforge.pinyin4j.format.HanyuPinyinToneType;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.screens.inventory.AbstractRecipeBookScreen;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.component.BundleContents;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.ingame.RecipeBookScreen;
+import net.minecraft.registry.Registries;
+import net.minecraft.entity.player.PlayerInventory;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.ItemStack;
+import net.minecraft.component.type.BundleContentsComponent;
 import org.apache.commons.lang3.math.Fraction;
 
 import java.util.ArrayList;
@@ -19,7 +19,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
-import betterbundle.util.BundleContentsHelper;
+import betterbundle.util.BundleContentsComponentHelper;
 
 public final class BundlePanelRenderer {
 
@@ -46,7 +46,7 @@ public final class BundlePanelRenderer {
     private BundlePanelRenderer() {}
 
     /** bundleSlot = container slot index (for clickSlot packets) */
-    public record BundleSlotEntry(int bundleSlot, ItemStack bundleStack, BundleContents contents) {}
+    public record BundleSlotEntry(int bundleSlot, ItemStack bundleStack, BundleContentsComponent contents) {}
 
     public static int panelWidth() {
         return CAT_BAR_WIDTH + 2 + SCROLL_BAR_WIDTH + 2
@@ -71,7 +71,7 @@ public final class BundlePanelRenderer {
         List<FlatItem> result = new ArrayList<>();
         for (BundleSlotEntry entry : bundles) {
             if (entry.contents() == null) continue;
-            List<ItemStack> items = entry.contents().itemCopyStream().toList();
+            List<ItemStack> items = entry.contents().stream().map(ItemStack::copy).toList();
             for (int i = 0; i < items.size(); i++) {
                 result.add(new FlatItem(entry.bundleSlot(), i, items.get(i)));
             }
@@ -82,7 +82,7 @@ public final class BundlePanelRenderer {
     public static List<FlatItem> filterItems(List<FlatItem> items, String query) {
         List<FlatItem> filtered = new ArrayList<>();
         for (FlatItem fi : items) {
-            String key = BuiltInRegistries.ITEM.getKey(fi.stack().getItem()).toString();
+            String key = Registries.ITEM.getId(fi.stack().getItem()).toString();
             if (currentCategory.matches(key)) filtered.add(fi);
         }
         if (query.isEmpty()) return filtered;
@@ -93,10 +93,10 @@ public final class BundlePanelRenderer {
     }
 
     private static boolean matchesSearch(FlatItem fi, String q) {
-        String name = fi.stack().getDisplayName().getString().toLowerCase(Locale.ROOT);
+        String name = fi.stack().getName().getString().toLowerCase(Locale.ROOT);
         if (name.contains(q)) return true;
         if (toPinyin(name).contains(q)) return true;
-        var key = BuiltInRegistries.ITEM.getKey(fi.stack().getItem());
+        var key = Registries.ITEM.getId(fi.stack().getItem());
         String fullId = key.toString().toLowerCase(Locale.ROOT);
         String path = key.getPath().toLowerCase(Locale.ROOT);
         return fullId.contains(q) || path.contains(q);
@@ -121,38 +121,38 @@ public final class BundlePanelRenderer {
     public static List<BundleSlotEntry> getAllBundles() { return findBundles(true); }
 
     private static List<BundleSlotEntry> findBundles(boolean includeEmpty) {
-        Minecraft client = Minecraft.getInstance();
-        Player player = client.player;
+        MinecraftClient client = MinecraftClient.getInstance();
+        PlayerEntity player = client.player;
         if (player == null) return List.of();
         List<BundleSlotEntry> result = new ArrayList<>();
-        Inventory inv = player.getInventory();
+        PlayerInventory inv = player.getInventory();
         for (int i = 0; i < 36; i++) {
-            ItemStack stack = inv.getItem(i);
+            ItemStack stack = inv.getStack(i);
             boolean matches = includeEmpty
-                    ? BundleContentsHelper.isBundle(stack)
-                    : BundleContentsHelper.isNonEmptyBundle(stack);
+                    ? BundleContentsComponentHelper.isBundle(stack)
+                    : BundleContentsComponentHelper.isNonEmptyBundle(stack);
             if (matches) {
                 // Convert inventory index to container slot index
                 int containerSlot = findContainerSlot(player, inv, i);
-                result.add(new BundleSlotEntry(containerSlot, stack, BundleContentsHelper.getContents(stack)));
+                result.add(new BundleSlotEntry(containerSlot, stack, BundleContentsComponentHelper.getContents(stack)));
             }
         }
         return result;
     }
 
     /** Convert player inventory index (0-35) to container menu slot index. */
-    private static int findContainerSlot(Player player, Inventory inv, int inventoryIndex) {
-        for (net.minecraft.world.inventory.Slot slot : player.containerMenu.slots) {
-            if (slot.container == inv && slot.getContainerSlot() == inventoryIndex) {
-                return slot.index;
+    private static int findContainerSlot(PlayerEntity player, PlayerInventory inv, int inventoryIndex) {
+        for (net.minecraft.screen.slot.Slot slot : player.currentScreenHandler.slots) {
+            if (slot.inventory == inv && slot.getIndex() == inventoryIndex) {
+                return slot.id;
             }
         }
         return inventoryIndex; // fallback
     }
 
     public static boolean isRecipeBookOpen() {
-        Minecraft client = Minecraft.getInstance();
-        if (client.screen instanceof AbstractRecipeBookScreen<?> screen) return screen.recipeBookComponent.isVisible();
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.currentScreen instanceof RecipeBookScreen<?> screen) return screen.recipeBook.isOpen();
         return false;
     }
 
@@ -221,7 +221,7 @@ public final class BundlePanelRenderer {
 
     // --- render ---
 
-    public static void render(GuiGraphicsExtractor graphics, int leftPos, int topPos, int imageHeight, int mouseX, int mouseY) {
+    public static void render(DrawContext graphics, int leftPos, int topPos, int imageHeight, int mouseX, int mouseY) {
         if (!isEffectivelyVisible()) return;
         List<BundleSlotEntry> bundles = getBundles();
         if (bundles.isEmpty()) { scrollOffset = 0; return; }
@@ -245,8 +245,8 @@ public final class BundlePanelRenderer {
         // Panel background (left edge inset 16px)
         graphics.fill(panelX + 16, panelY, panelX + pw, panelY + panelHeight, 0xC0101010);
 
-        Minecraft client = Minecraft.getInstance();
-        Font font = client.font;
+        MinecraftClient client = MinecraftClient.getInstance();
+        TextRenderer font = client.textRenderer;
 
         int totalRows = Math.max(1, (items.size() + COLUMNS - 1) / COLUMNS);
         int maxScroll = Math.max(0, totalRows - VISIBLE_ROWS);
@@ -276,7 +276,7 @@ public final class BundlePanelRenderer {
             int bg = selected ? 0xC0101010 : (hovered ? 0xFF555555 : 0xFF2D2D2D);
             graphics.fill(bx, by, bx + bw, by + CAT_BAR_WIDTH, bg);
             int iconOff = (CAT_BAR_WIDTH - 16) / 2;
-            graphics.item(cats[i].getIcon(), bx + iconOff, by + iconOff);
+            graphics.drawItem(cats[i].getIcon(), bx + iconOff, by + iconOff);
         }
 
         // Scroll bar
@@ -308,8 +308,7 @@ public final class BundlePanelRenderer {
                 graphics.fill(sx + 1, sy + 1, sx + SLOT_SIZE - 1, sy + SLOT_SIZE - 1, 0xFFC6C6C6);
 
                 FlatItem fi = items.get(flatIndex);
-                graphics.item(fi.stack(), sx + 1, sy + 1);
-                graphics.itemDecorations(client.font, fi.stack(), sx + 1, sy + 1);
+                graphics.drawItem(fi.stack(), sx + 1, sy + 1);
 
                 if (mouseX >= sx && mouseX < sx + SLOT_SIZE && mouseY >= sy && mouseY < sy + SLOT_SIZE) {
                     hoveredFlatIndex = flatIndex;
@@ -323,7 +322,7 @@ public final class BundlePanelRenderer {
             int hx = gridX + hCol * (SLOT_SIZE + SLOT_SPACING);
             int hy = gridY + hRow * (SLOT_SIZE + SLOT_SPACING);
             graphics.fill(hx, hy, hx + SLOT_SIZE, hy + SLOT_SIZE, 0x80FFFFFF);
-            graphics.setTooltipForNextFrame(client.font, items.get(hoveredFlatIndex).stack(), mouseX, mouseY);
+            graphics.drawItemTooltip(client.textRenderer, items.get(hoveredFlatIndex).stack(), mouseX, mouseY);
             hoveredBundleSlot = items.get(hoveredFlatIndex).bundleSlot();
         } else {
             hoveredBundleSlot = -1;
@@ -338,33 +337,33 @@ public final class BundlePanelRenderer {
             int bg = isAllMode ? (active ? 0xFF000000 : 0xFF2D2D2D) : 0xFF1A1A1A;
             graphics.fill(sbx, sby, sbx + sbw, sby + SEARCH_BAR_HEIGHT, bg);
             if (active) graphics.fill(sbx + 1, sby + 1, sbx + sbw - 1, sby + SEARCH_BAR_HEIGHT - 1, 0xFF3D3D3D);
-            int textY = sby + (SEARCH_BAR_HEIGHT - font.lineHeight) / 2;
+            int textY = sby + (SEARCH_BAR_HEIGHT - font.fontHeight) / 2;
             if (isAllMode && searchQuery.isEmpty() && !searchFocused) {
-                graphics.text(font, "Search...", sbx + 3, textY, 0xFF666666, false);
+                graphics.drawText(font, "Search...", sbx + 3, textY, 0xFF666666, false);
             } else if (isAllMode && !searchQuery.isEmpty()) {
-                graphics.text(font, searchQuery, sbx + 3, textY, 0xFFFFFFFF, false);
+                graphics.drawText(font, searchQuery, sbx + 3, textY, 0xFFFFFFFF, false);
                 searchCursorTick = (searchCursorTick + 1) % 40;
                 if (searchFocused && searchCursorTick < 20) {
-                    int cursorX = sbx + 3 + font.width(searchQuery);
-                    graphics.fill(cursorX, textY, cursorX + 1, textY + font.lineHeight, 0xFFFFFFFF);
+                    int cursorX = sbx + 3 + font.getWidth(searchQuery);
+                    graphics.fill(cursorX, textY, cursorX + 1, textY + font.fontHeight, 0xFFFFFFFF);
                 }
             }
         }
 
         // Category title (on top of search bar)
         if (currentCategory != BundleCategory.ALL) {
-            String label = currentCategory.getDisplayName();
-            graphics.text(font, label, panelX + 16 + 3, panelY + 2, 0xFFCCCCCC, false);
+            String label = currentCategory.name();
+            graphics.drawText(font, label, panelX + 16 + 3, panelY + 2, 0xFFCCCCCC, false);
         }
 
         // Bundle count display (bottom-right of grid)
         int[] stats = getBundleStats();
         String countText = stats[0] + "/" + stats[1];
-        int textW = font.width(countText);
+        int textW = font.getWidth(countText);
         int countX = gridX + COLUMNS * (SLOT_SIZE + SLOT_SPACING) - SLOT_SPACING - textW;
         int countY = gridY + VISIBLE_ROWS * SLOT_SIZE + (VISIBLE_ROWS - 1) * SLOT_SPACING + 7;
-        graphics.fill(countX - 2, countY, countX + textW + 2, countY + font.lineHeight, 0xC0101010);
-        graphics.text(font, countText, countX, countY, 0xFFAAAAAA, false);
+        graphics.fill(countX - 2, countY, countX + textW + 2, countY + font.fontHeight, 0xC0101010);
+        graphics.drawText(font, countText, countX, countY, 0xFFAAAAAA, false);
 
     }
 
@@ -373,10 +372,10 @@ public final class BundlePanelRenderer {
         int totalItems = 0;
         Fraction totalWeight = Fraction.ZERO;
         for (BundleSlotEntry entry : all) {
-            BundleContents c = entry.contents();
+            BundleContentsComponent c = entry.contents();
             if (c != null && !c.isEmpty()) {
-                totalItems += c.itemCopyStream().mapToInt(ItemStack::getCount).sum();
-                totalWeight = totalWeight.add(c.weight().result().orElse(Fraction.ZERO));
+                totalItems += c.stream().map(ItemStack::copy).mapToInt(ItemStack::getCount).sum();
+                totalWeight = totalWeight.add(c.getOccupancy());
             }
         }
         // remaining weight → how many more "standard" items (weight 1/64) would fit

@@ -1,30 +1,24 @@
 package betterbundle.mixin;
 
 import betterbundle.gui.BundleCategory;
-import betterbundle.gui.BundlePanelInteraction;
 import betterbundle.gui.BundlePanelRenderer;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
-import net.minecraft.client.gui.screens.inventory.AbstractRecipeBookScreen;
-import net.minecraft.client.input.CharacterEvent;
-import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.gui.screen.ingame.HandledScreen;
+import net.minecraft.client.gui.screen.ingame.RecipeBookScreen;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(AbstractRecipeBookScreen.class)
-public abstract class AbstractRecipeBookScreenMixin {
+@Mixin(RecipeBookScreen.class)
+public abstract class RecipeBookScreenMixin {
 
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
-    private void onMouseClicked(MouseButtonEvent event, boolean doubleClick, CallbackInfoReturnable<Boolean> cir) {
-        AbstractContainerScreen<?> self = (AbstractContainerScreen<?>) (Object) this;
-        double mouseX = event.x();
-        double mouseY = event.y();
+    private void onMouseClicked(double mouseX, double mouseY, int button, CallbackInfoReturnable<Boolean> cir) {
+        HandledScreen<?> self = (HandledScreen<?>) (Object) this;
 
         // Toggle button
-        int bx = self.leftPos + self.imageWidth;
-        int by = self.topPos + 5;
+        int bx = self.x + self.backgroundWidth;
+        int by = self.y + 5;
         if (mouseX >= bx && mouseX < bx + 20 && mouseY >= by && mouseY < by + 20) {
             BundlePanelRenderer.toggleVisible();
             cir.setReturnValue(true);
@@ -33,7 +27,7 @@ public abstract class AbstractRecipeBookScreenMixin {
 
         // Category button
         if (BundlePanelRenderer.isEffectivelyVisible()) {
-            BundleCategory cat = BundlePanelRenderer.getCategoryAt(mouseX, mouseY, self.leftPos, self.topPos, self.imageHeight);
+            BundleCategory cat = BundlePanelRenderer.getCategoryAt(mouseX, mouseY, self.x, self.y, self.backgroundHeight);
             if (cat != null) {
                 BundlePanelRenderer.currentCategory = cat;
                 BundlePanelRenderer.searchQuery = "";
@@ -45,7 +39,7 @@ public abstract class AbstractRecipeBookScreenMixin {
 
         // Search bar click
         if (BundlePanelRenderer.isEffectivelyVisible()
-                && BundlePanelRenderer.isInsideSearchBar(mouseX, mouseY, self.leftPos, self.topPos, self.imageHeight)) {
+                && BundlePanelRenderer.isInsideSearchBar(mouseX, mouseY, self.x, self.y, self.backgroundHeight)) {
             BundlePanelRenderer.searchFocused = true;
             cir.setReturnValue(true);
             return;
@@ -55,17 +49,17 @@ public abstract class AbstractRecipeBookScreenMixin {
     }
 
     @Inject(method = "charTyped", at = @At("HEAD"), cancellable = true)
-    private void onCharTyped(CharacterEvent event, CallbackInfoReturnable<Boolean> cir) {
+    private void onCharTyped(char codePoint, int modifiers, CallbackInfoReturnable<Boolean> cir) {
         if (BundlePanelRenderer.searchFocused) {
-            BundlePanelRenderer.onCharTyped((char) event.codepoint());
+            BundlePanelRenderer.onCharTyped(codePoint);
             cir.setReturnValue(true);
         }
     }
 
     @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
-    private void onKeyPressed(KeyEvent event, CallbackInfoReturnable<Boolean> cir) {
+    private void onKeyPressed(int keyCode, int scanCode, int modifiers, CallbackInfoReturnable<Boolean> cir) {
         if (BundlePanelRenderer.searchFocused) {
-            BundlePanelRenderer.onSearchKeyPress(event.key());
+            BundlePanelRenderer.onSearchKeyPress(keyCode);
             cir.setReturnValue(true);
         }
     }

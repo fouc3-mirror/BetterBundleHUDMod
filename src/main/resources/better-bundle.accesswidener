@@ -1,11 +1,11 @@
-accessWidener v2 official
+accessWidener v2 named
 
-accessible class net/minecraft/client/gui/screens/inventory/AbstractContainerScreen
-accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScreen leftPos I
-accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScreen topPos I
-accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScreen imageHeight I
-accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScreen imageWidth I
-accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScreen hoveredSlot Lnet/minecraft/world/inventory/Slot;
+accessible class net/minecraft/client/gui/screen/ingame/HandledScreen
+accessible field net/minecraft/client/gui/screen/ingame/HandledScreen x I
+accessible field net/minecraft/client/gui/screen/ingame/HandledScreen y I
+accessible field net/minecraft/client/gui/screen/ingame/HandledScreen backgroundHeight I
+accessible field net/minecraft/client/gui/screen/ingame/HandledScreen backgroundWidth I
+accessible field net/minecraft/client/gui/screen/ingame/HandledScreen focusedSlot Lnet/minecraft/screen/slot/Slot;
 
-accessible class net/minecraft/client/gui/screens/inventory/AbstractRecipeBookScreen
-accessible field net/minecraft/client/gui/screens/inventory/AbstractRecipeBookScreen recipeBookComponent Lnet/minecraft/client/gui/screens/recipebook/RecipeBookComponent;
+accessible class net/minecraft/client/gui/screen/ingame/RecipeBookScreen
+accessible field net/minecraft/client/gui/screen/ingame/RecipeBookScreen recipeBook Lnet/minecraft/client/gui/screen/recipebook/RecipeBookWidget;

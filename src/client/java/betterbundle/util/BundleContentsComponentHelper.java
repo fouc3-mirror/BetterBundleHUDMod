@@ -1,22 +1,22 @@
 package betterbundle.util;
 
-import net.minecraft.core.component.DataComponents;
-import net.minecraft.world.item.BundleItem;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.component.BundleContents;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.item.BundleItem;
+import net.minecraft.item.ItemStack;
+import net.minecraft.component.type.BundleContentsComponent;
 import org.apache.commons.lang3.math.Fraction;
 
-public final class BundleContentsHelper {
+public final class BundleContentsComponentHelper {
 
-    private BundleContentsHelper() {}
+    private BundleContentsComponentHelper() {}
 
-    public static BundleContents getContents(ItemStack stack) {
+    public static BundleContentsComponent getContents(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return null;
-        return stack.get(DataComponents.BUNDLE_CONTENTS);
+        return stack.get(DataComponentTypes.BUNDLE_CONTENTS);
     }
 
     public static boolean isNonEmptyBundle(ItemStack stack) {
-        BundleContents contents = getContents(stack);
+        BundleContentsComponent contents = getContents(stack);
         return contents != null && !contents.isEmpty();
     }
 
@@ -29,15 +29,15 @@ public final class BundleContentsHelper {
     public static boolean canFitItem(ItemStack bundleStack, ItemStack toInsert) {
         if (!isBundle(bundleStack) || toInsert.isEmpty()) return false;
 
-        BundleContents contents = getContents(bundleStack);
+        BundleContentsComponent contents = getContents(bundleStack);
         Fraction currentWeight;
         if (contents != null) {
-            currentWeight = contents.weight().result().orElse(Fraction.ZERO);
+            currentWeight = contents.getOccupancy();
         } else {
             currentWeight = Fraction.ZERO; // empty/unused bundle
         }
 
-        Fraction itemWeight = Fraction.getFraction(toInsert.getCount(), toInsert.getMaxStackSize());
+        Fraction itemWeight = Fraction.getFraction(toInsert.getCount(), toInsert.getMaxCount());
         return currentWeight.add(itemWeight).compareTo(Fraction.ONE) <= 0;
     }
 }

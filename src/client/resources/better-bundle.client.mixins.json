@@ -1,11 +1,11 @@
 {
     "required": true,
     "package": "betterbundle.mixin",
-    "compatibilityLevel": "JAVA_25",
+    "compatibilityLevel": "JAVA_21",
     "client": [
         "InventoryScreenMixin",
-        "AbstractContainerScreenMixin",
-        "AbstractRecipeBookScreenMixin",
+        "HandledScreenMixin",
+        "RecipeBookScreenMixin"
     ],
     "injectors": {
         "defaultRequire": 1

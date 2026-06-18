@@ -1,5 +1,5 @@
 plugins {
-    id 'net.fabricmc.fabric-loom' version "${loom_version}"
+    id 'fabric-loom' version '1.10.5'
     id 'maven-publish'
 }
 
@@ -8,12 +8,26 @@ group = project.maven_group
 
 repositories {
     mavenCentral()
+    maven { url 'https://maven.fabricmc.net/' }
+    maven { url 'https://modmaven.dev/' }
+    maven { url 'https://maven.modrinth.com/' }
 }
 
 configurations {
     embed
     compileOnly.extendsFrom embed
 }
+
+// Version group detection:
+// - 1.21.2-1.21.4: legacy (old packet API, MatrixStack)
+// - 1.21.5: intermediate (ItemStackHash packet API, MatrixStack)
+// - 1.21.6+: modern (ItemStackHash packet API, Matrix3x2fStack)
+def mcVersion = project.minecraft_version
+def isLegacyVersion = mcVersion == '1.21.2' || mcVersion == '1.21.3' || mcVersion == '1.21.4'
+def isIntermediateVersion = mcVersion == '1.21.5'
+def versionSourceSet = isLegacyVersion ? 'java-legacy' : (isIntermediateVersion ? 'java-intermediate' : 'java-modern')
+
+println "Minecraft version: ${mcVersion}, using ${versionSourceSet} source set"
 
 loom {
     splitEnvironmentSourceSets()
@@ -29,12 +43,30 @@ loom {
 
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
 
-    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
-    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+    // Fabric API is optional since this mod doesn't use any Fabric API features
+    // Uncomment if needed for other features
+    // modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 
     embed 'com.belerweb:pinyin4j:2.5.1'
+}
+
+// Add version-specific source directory to client source set
+sourceSets {
+    client {
+        java {
+            if (isLegacyVersion) {
+                srcDir 'src/client/java-legacy'
+            } else if (isIntermediateVersion) {
+                srcDir 'src/client/java-intermediate'
+            } else {
+                srcDir 'src/client/java-modern'
+            }
+        }
+    }
 }
 
 processResources {
@@ -47,14 +79,14 @@ processResources {
 }
 
 tasks.withType(JavaCompile).configureEach {
-    it.options.release = 25
+    it.options.release = 21
 }
 
 java {
     withSourcesJar()
 
-    sourceCompatibility = JavaVersion.VERSION_25
-    targetCompatibility = JavaVersion.VERSION_25
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
 }
 
 jar {
@@ -69,6 +101,9 @@ jar {
     from {
         configurations.embed.collect { it.isDirectory() ? it : zipTree(it) }
     }
+    
+    // Include all classes from client source set
+    from sourceSets.client.output
 }
 
 publishing {

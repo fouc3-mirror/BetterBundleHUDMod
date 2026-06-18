@@ -3,53 +3,48 @@ package betterbundle.mixin;
 import betterbundle.gui.BundleCategory;
 import betterbundle.gui.BundlePanelInteraction;
 import betterbundle.gui.BundlePanelRenderer;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
-import net.minecraft.client.gui.screens.inventory.AbstractRecipeBookScreen;
-import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.input.MouseButtonEvent;
-import net.minecraft.world.inventory.Slot;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.screen.ingame.HandledScreen;
+import net.minecraft.client.gui.screen.ingame.RecipeBookScreen;
+import net.minecraft.screen.slot.Slot;
+import net.minecraft.item.ItemStack;
 import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(AbstractContainerScreen.class)
-public abstract class AbstractContainerScreenMixin {
+@Mixin(HandledScreen.class)
+public abstract class HandledScreenMixin {
 
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
-    private void onMouseClicked(MouseButtonEvent event, boolean doubleClick, CallbackInfoReturnable<Boolean> cir) {
-        AbstractContainerScreen<?> self = (AbstractContainerScreen<?>) (Object) this;
+    private void onMouseClicked(double mouseX, double mouseY, int button, CallbackInfoReturnable<Boolean> cir) {
+        HandledScreen<?> self = (HandledScreen<?>) (Object) this;
 
         // Bulk-insert: space+left anywhere starts the timer (0.05s to activate)
-        if (event.button() == 0 && isSpaceDown()) {
+        if (button == 0 && isSpaceDown()) {
             BundlePanelInteraction.startBulkInsert();
         }
 
         // Space+Click works on ALL container screens
-        Slot hovered = self.hoveredSlot;
-        if (hovered != null && hovered.hasItem()) {
+        Slot hovered = self.focusedSlot;
+        if (hovered != null && hovered.hasStack()) {
             boolean handled = BundlePanelInteraction.handleSpaceClick(hovered);
             if (handled) { cir.setReturnValue(true); return; }
         }
 
-        double mx = event.x();
-        double my = event.y();
-
         // For non-recipe-book screens: handle toggle, category, search bar
-        if (!(((Object) this) instanceof AbstractRecipeBookScreen)) {
-            int bx = self.leftPos + self.imageWidth;
-            int by = self.topPos + 5;
-            if (mx >= bx && mx < bx + 20 && my >= by && my < by + 20) {
+        if (!(((Object) this) instanceof RecipeBookScreen)) {
+            int bx = self.x + self.backgroundWidth;
+            int by = self.y + 5;
+            if (mouseX >= bx && mouseX < bx + 20 && mouseY >= by && mouseY < by + 20) {
                 BundlePanelRenderer.toggleVisible();
                 cir.setReturnValue(true);
                 return;
             }
 
             if (BundlePanelRenderer.isEffectivelyVisible()) {
-                BundleCategory cat = BundlePanelRenderer.getCategoryAt(mx, my, self.leftPos, self.topPos, self.imageHeight);
+                BundleCategory cat = BundlePanelRenderer.getCategoryAt(mouseX, mouseY, self.x, self.y, self.backgroundHeight);
                 if (cat != null) {
                     BundlePanelRenderer.currentCategory = cat;
                     BundlePanelRenderer.searchQuery = "";
@@ -60,7 +55,7 @@ public abstract class AbstractContainerScreenMixin {
             }
 
             if (BundlePanelRenderer.isEffectivelyVisible()
-                    && BundlePanelRenderer.isInsideSearchBar(mx, my, self.leftPos, self.topPos, self.imageHeight)) {
+                    && BundlePanelRenderer.isInsideSearchBar(mouseX, mouseY, self.x, self.y, self.backgroundHeight)) {
                 BundlePanelRenderer.searchFocused = true;
                 cir.setReturnValue(true);
                 return;
@@ -72,22 +67,42 @@ public abstract class AbstractContainerScreenMixin {
         if (!BundlePanelRenderer.isEffectivelyVisible()) return;
 
         // Cursor has items + click anywhere in panel (except category buttons) → insert
-        ItemStack cursor = self.getMenu().getCarried();
-        if (!cursor.isEmpty() && isInsidePanelBounds(mx, my, self.leftPos, self.topPos, self.imageHeight)) {
-            BundleCategory cat = BundlePanelRenderer.getCategoryAt(mx, my, self.leftPos, self.topPos, self.imageHeight);
+        ItemStack cursor = self.getScreenHandler().getCursorStack();
+        if (!cursor.isEmpty() && isInsidePanelBounds(mouseX, mouseY, self.x, self.y, self.backgroundHeight)) {
+            BundleCategory cat = BundlePanelRenderer.getCategoryAt(mouseX, mouseY, self.x, self.y, self.backgroundHeight);
             if (cat == null) {
-                boolean handled = BundlePanelInteraction.handlePanelInsert(event.button());
+                boolean handled = BundlePanelInteraction.handlePanelInsert(button);
                 if (handled) cir.setReturnValue(true);
             }
         }
 
-        if (BundlePanelInteraction.isInsidePanel(mx, my, self.leftPos, self.topPos, self.imageHeight)) {
+        if (BundlePanelInteraction.isInsidePanel(mouseX, mouseY, self.x, self.y, self.backgroundHeight)) {
             if (cursor.isEmpty()) {
+                // In 1.21.2, we need to get modifiers from GLFW directly
+                int modifiers = getModifiers();
                 boolean handled = BundlePanelInteraction.handlePanelClick(
-                        mx, my, event.button(), event.modifiers(), self.leftPos, self.topPos, self);
+                        mouseX, mouseY, button, modifiers, self.x, self.y, self);
                 if (handled) cir.setReturnValue(true);
             }
         }
+    }
+
+    private static int getModifiers() {
+        long window = MinecraftClient.getInstance().getWindow().getHandle();
+        int modifiers = 0;
+        if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS
+                || GLFW.glfwGetKey(window, GLFW.GLFW_KEY_RIGHT_SHIFT) == GLFW.GLFW_PRESS) {
+            modifiers |= 1;
+        }
+        if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT_CONTROL) == GLFW.GLFW_PRESS
+                || GLFW.glfwGetKey(window, GLFW.GLFW_KEY_RIGHT_CONTROL) == GLFW.GLFW_PRESS) {
+            modifiers |= 2;
+        }
+        if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT_ALT) == GLFW.GLFW_PRESS
+                || GLFW.glfwGetKey(window, GLFW.GLFW_KEY_RIGHT_ALT) == GLFW.GLFW_PRESS) {
+            modifiers |= 4;
+        }
+        return modifiers;
     }
 
     private static boolean isInsidePanelBounds(double mx, double my, int leftPos, int topPos, int imageHeight) {
@@ -103,21 +118,21 @@ public abstract class AbstractContainerScreenMixin {
     }
 
     @Inject(method = "mouseReleased", at = @At("HEAD"), cancellable = true)
-    private void onMouseReleased(MouseButtonEvent event, CallbackInfoReturnable<Boolean> cir) {
+    private void onMouseReleased(double mouseX, double mouseY, int button, CallbackInfoReturnable<Boolean> cir) {
         BundlePanelInteraction.stopBulkInsert();
         lastBulkSlot = -1;
         if (!BundlePanelRenderer.isEffectivelyVisible()) return;
-        AbstractContainerScreen<?> self = (AbstractContainerScreen<?>) (Object) this;
-        if (BundlePanelInteraction.isInsidePanel(event.x(), event.y(),
-                self.leftPos, self.topPos, self.imageHeight)) {
+        HandledScreen<?> self = (HandledScreen<?>) (Object) this;
+        if (BundlePanelInteraction.isInsidePanel(mouseX, mouseY,
+                self.x, self.y, self.backgroundHeight)) {
             cir.setReturnValue(true);
         }
     }
 
     @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
-    private void onKeyPressed(KeyEvent event, CallbackInfoReturnable<Boolean> cir) {
+    private void onKeyPressed(int keyCode, int scanCode, int modifiers, CallbackInfoReturnable<Boolean> cir) {
         if (BundlePanelRenderer.searchFocused) {
-            BundlePanelRenderer.onSearchKeyPress(event.key());
+            BundlePanelRenderer.onSearchKeyPress(keyCode);
             cir.setReturnValue(true);
         }
     }
@@ -125,15 +140,15 @@ public abstract class AbstractContainerScreenMixin {
     private int lastBulkSlot = -1;
 
     @Inject(method = "mouseDragged", at = @At("HEAD"), cancellable = true)
-    private void onMouseDragged(MouseButtonEvent event, double dx, double dy,
+    private void onMouseDragged(double mouseX, double mouseY, int button, double dx, double dy,
                                  CallbackInfoReturnable<Boolean> cir) {
         if (!BundlePanelInteraction.isBulkInsertActive()) return;
         if (!isSpaceDown()) { BundlePanelInteraction.stopBulkInsert(); return; }
 
-        AbstractContainerScreen<?> self = (AbstractContainerScreen<?>) (Object) this;
-        Slot hovered = self.hoveredSlot;
-        if (hovered != null && hovered.hasItem() && hovered.index != lastBulkSlot) {
-            lastBulkSlot = hovered.index;
+        HandledScreen<?> self = (HandledScreen<?>) (Object) this;
+        Slot hovered = self.focusedSlot;
+        if (hovered != null && hovered.hasStack() && hovered.getIndex() != lastBulkSlot) {
+            lastBulkSlot = hovered.getIndex();
             BundlePanelInteraction.handleSpaceClick(hovered);
         }
         cir.setReturnValue(true);
@@ -143,17 +158,17 @@ public abstract class AbstractContainerScreenMixin {
     private void onMouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY,
                                   CallbackInfoReturnable<Boolean> cir) {
         if (!BundlePanelRenderer.isEffectivelyVisible()) return;
-        AbstractContainerScreen<?> self = (AbstractContainerScreen<?>) (Object) this;
+        HandledScreen<?> self = (HandledScreen<?>) (Object) this;
         if (BundlePanelInteraction.isInsidePanel(mouseX, mouseY,
-                self.leftPos, self.topPos, self.imageHeight)) {
+                self.x, self.y, self.backgroundHeight)) {
             boolean handled = BundlePanelInteraction.handleScroll(mouseX, mouseY, scrollY,
-                    self.leftPos, self.topPos, self.imageHeight);
+                    self.x, self.y, self.backgroundHeight);
             if (handled) cir.setReturnValue(true);
         }
     }
 
     private static boolean isSpaceDown() {
-        long window = Minecraft.getInstance().getWindow().handle();
+        long window = MinecraftClient.getInstance().getWindow().getHandle();
         return GLFW.glfwGetKey(window, GLFW.GLFW_KEY_SPACE) == GLFW.GLFW_PRESS;
     }
 }
