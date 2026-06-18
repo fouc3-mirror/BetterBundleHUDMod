@@ -1,5 +1,7 @@
 package betterbundle.mixin;
 
+import betterbundle.config.BetterBundleConfig;
+import betterbundle.config.BetterBundleConfig.ToggleButtonPosition;
 import betterbundle.gui.BundleCategory;
 import betterbundle.gui.BundlePanelRenderer;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
@@ -16,13 +18,30 @@ public abstract class RecipeBookScreenMixin {
     private void onMouseClicked(double mouseX, double mouseY, int button, CallbackInfoReturnable<Boolean> cir) {
         HandledScreen<?> self = (HandledScreen<?>) (Object) this;
 
-        // Toggle button
-        int bx = self.x + self.backgroundWidth;
-        int by = self.y + 5;
-        if (mouseX >= bx && mouseX < bx + 20 && mouseY >= by && mouseY < by + 20) {
-            BundlePanelRenderer.toggleVisible();
-            cir.setReturnValue(true);
-            return;
+        // Toggle button - handle based on position config
+        ToggleButtonPosition position = BetterBundleConfig.getInstance().toggleButtonPosition();
+        if (position != ToggleButtonPosition.OFF) {
+            int bx, by;
+            switch (position) {
+                case LEFT:
+                    bx = self.x - 20;
+                    by = self.y + 5;
+                    break;
+                case TOP:
+                    bx = self.x + self.backgroundWidth - 20;
+                    by = self.y - 20;
+                    break;
+                case RIGHT:
+                default:
+                    bx = self.x + self.backgroundWidth;
+                    by = self.y + 5;
+                    break;
+            }
+            if (mouseX >= bx && mouseX < bx + 20 && mouseY >= by && mouseY < by + 20) {
+                BundlePanelRenderer.toggleVisible();
+                cir.setReturnValue(true);
+                return;
+            }
         }
 
         // Category button

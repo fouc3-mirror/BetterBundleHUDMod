@@ -4,5 +4,13 @@
     "config.better-bundle.option.showStackOverlay": "显示物品覆盖层",
     "config.better-bundle.option.showStackOverlay.tooltip": "在收纳袋面板中的物品上显示数量和耐久度条",
     "config.better-bundle.option.stackSameNbt": "合并相同NBT物品",
-    "config.better-bundle.option.stackSameNbt.tooltip": "将不同收纳袋中相同NBT数据的物品在GUI中合并显示"
+    "config.better-bundle.option.stackSameNbt.tooltip": "将不同收纳袋中相同NBT数据的物品在GUI中合并显示",
+    "config.better-bundle.option.toggleButtonPosition": "开关按钮位置",
+    "config.better-bundle.option.toggleButtonPosition.tooltip": "收纳袋面板开关按钮的位置",
+    "config.better-bundle.option.toggleButtonPosition.left": "左侧",
+    "config.better-bundle.option.toggleButtonPosition.top": "上侧",
+    "config.better-bundle.option.toggleButtonPosition.right": "右侧",
+    "config.better-bundle.option.toggleButtonPosition.off": "关闭",
+    "config.better-bundle.option.panelVisible": "显示收纳袋面板",
+    "config.better-bundle.option.panelVisible.tooltip": "切换收纳袋管理面板的显示状态"
 }

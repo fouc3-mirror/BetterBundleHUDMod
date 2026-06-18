@@ -4,5 +4,13 @@
     "config.better-bundle.option.showStackOverlay": "Show Stack Overlay",
     "config.better-bundle.option.showStackOverlay.tooltip": "Display item count and durability bar on items in the bundle panel",
     "config.better-bundle.option.stackSameNbt": "Stack Same NBT Items",
-    "config.better-bundle.option.stackSameNbt.tooltip": "Merge items with same NBT data from different bundles in the GUI display"
+    "config.better-bundle.option.stackSameNbt.tooltip": "Merge items with same NBT data from different bundles in the GUI display",
+    "config.better-bundle.option.toggleButtonPosition": "Toggle Button Position",
+    "config.better-bundle.option.toggleButtonPosition.tooltip": "Position of the bundle panel toggle button",
+    "config.better-bundle.option.toggleButtonPosition.left": "Left",
+    "config.better-bundle.option.toggleButtonPosition.top": "Top",
+    "config.better-bundle.option.toggleButtonPosition.right": "Right",
+    "config.better-bundle.option.toggleButtonPosition.off": "Off",
+    "config.better-bundle.option.panelVisible": "Show Bundle Panel",
+    "config.better-bundle.option.panelVisible.tooltip": "Toggle the bundle management panel visibility"
 }

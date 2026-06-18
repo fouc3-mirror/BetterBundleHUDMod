@@ -49,6 +49,28 @@ public class ModMenuCompat implements ModMenuApi {
                 .setSaveConsumer(value -> config.setStackSameNbt(value))
                 .build());
         
+        // Toggle button position option
+        general.addEntry(entryBuilder.startEnumSelector(
+                Text.translatable("config.better-bundle.option.toggleButtonPosition"),
+                BetterBundleConfig.ToggleButtonPosition.class,
+                config.toggleButtonPosition()
+        )
+                .setDefaultValue(BetterBundleConfig.ToggleButtonPosition.RIGHT)
+                .setEnumNameProvider(pos -> Text.translatable("config.better-bundle.option.toggleButtonPosition." + pos.name().toLowerCase()))
+                .setTooltip(Text.translatable("config.better-bundle.option.toggleButtonPosition.tooltip"))
+                .setSaveConsumer(value -> config.setToggleButtonPosition(value))
+                .build());
+        
+        // Panel visibility option
+        general.addEntry(entryBuilder.startBooleanToggle(
+                Text.translatable("config.better-bundle.option.panelVisible"),
+                config.panelVisible()
+        )
+                .setDefaultValue(true)
+                .setTooltip(Text.translatable("config.better-bundle.option.panelVisible.tooltip"))
+                .setSaveConsumer(value -> config.setPanelVisible(value))
+                .build());
+        
         return builder.build();
     }
 }

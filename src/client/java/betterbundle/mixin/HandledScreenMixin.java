@@ -1,5 +1,7 @@
 package betterbundle.mixin;
 
+import betterbundle.config.BetterBundleConfig;
+import betterbundle.config.BetterBundleConfig.ToggleButtonPosition;
 import betterbundle.gui.BundleCategory;
 import betterbundle.gui.BundlePanelInteraction;
 import betterbundle.gui.BundlePanelRenderer;
@@ -35,12 +37,30 @@ public abstract class HandledScreenMixin {
 
         // For non-recipe-book screens: handle toggle, category, search bar
         if (!(((Object) this) instanceof RecipeBookScreen)) {
-            int bx = self.x + self.backgroundWidth;
-            int by = self.y + 5;
-            if (mouseX >= bx && mouseX < bx + 20 && mouseY >= by && mouseY < by + 20) {
-                BundlePanelRenderer.toggleVisible();
-                cir.setReturnValue(true);
-                return;
+            // Handle toggle button click based on position config
+            ToggleButtonPosition position = BetterBundleConfig.getInstance().toggleButtonPosition();
+            if (position != ToggleButtonPosition.OFF) {
+                int bx, by;
+                switch (position) {
+                    case LEFT:
+                        bx = self.x - 20;
+                        by = self.y + 5;
+                        break;
+                    case TOP:
+                        bx = self.x + self.backgroundWidth - 20;
+                        by = self.y - 20;
+                        break;
+                    case RIGHT:
+                    default:
+                        bx = self.x + self.backgroundWidth;
+                        by = self.y + 5;
+                        break;
+                }
+                if (mouseX >= bx && mouseX < bx + 20 && mouseY >= by && mouseY < by + 20) {
+                    BundlePanelRenderer.toggleVisible();
+                    cir.setReturnValue(true);
+                    return;
+                }
             }
 
             if (BundlePanelRenderer.isEffectivelyVisible()) {

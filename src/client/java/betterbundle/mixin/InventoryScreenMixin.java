@@ -1,5 +1,7 @@
 package betterbundle.mixin;
 
+import betterbundle.config.BetterBundleConfig;
+import betterbundle.config.BetterBundleConfig.ToggleButtonPosition;
 import betterbundle.gui.BundlePanelRenderer;
 import betterbundle.util.MatrixOperations;
 import net.minecraft.client.gui.DrawContext;
@@ -43,10 +45,31 @@ public abstract class InventoryScreenMixin {
             }
         }
 
-        renderToggleButton(graphics, self.x + self.backgroundWidth, self.y + 5, mouseX, mouseY);
+        // Render toggle button based on position config
+        renderToggleButton(graphics, self.x, self.y, self.backgroundWidth, mouseX, mouseY);
     }
 
-    private static void renderToggleButton(DrawContext graphics, int x, int y, int mouseX, int mouseY) {
+    private static void renderToggleButton(DrawContext graphics, int leftPos, int topPos, int backgroundWidth, int mouseX, int mouseY) {
+        ToggleButtonPosition position = BetterBundleConfig.getInstance().toggleButtonPosition();
+        if (position == ToggleButtonPosition.OFF) return;
+        
+        int x, y;
+        switch (position) {
+            case LEFT:
+                x = leftPos - 20;
+                y = topPos + 5;
+                break;
+            case TOP:
+                x = leftPos + backgroundWidth - 20;
+                y = topPos - 20;
+                break;
+            case RIGHT:
+            default:
+                x = leftPos + backgroundWidth;
+                y = topPos + 5;
+                break;
+        }
+        
         boolean hovered = mouseX >= x && mouseX < x + 20 && mouseY >= y && mouseY < y + 20;
         if (hovered) graphics.fill(x, y, x + 20, y + 20, 0x40FFFFFF);
         if (BundlePanelRenderer.visible) graphics.fill(x + 2, y + 17, x + 18, y + 18, 0xFF80B0FF);

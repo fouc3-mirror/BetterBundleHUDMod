@@ -38,7 +38,7 @@ public final class BundlePanelRenderer {
     public static final int SEARCH_BAR_HEIGHT = 14;
 
     private static int scrollOffset = 0;
-    public static boolean visible = true;
+    public static boolean visible = BetterBundleConfig.getInstance().panelVisible();
 
     public static String searchQuery = "";
     public static boolean searchFocused = false;
@@ -225,7 +225,10 @@ public final class BundlePanelRenderer {
     public static List<Integer> getHoveredBundleSlots() { return visible ? hoveredBundleSlots : Collections.emptyList(); }
     public static int getHoveredBundleSlot() { return visible && !hoveredBundleSlots.isEmpty() ? hoveredBundleSlots.get(0) : -1; }
     public static boolean isEffectivelyVisible() { return visible && !isRecipeBookOpen(); }
-    public static void toggleVisible() { visible = !visible; }
+    public static void toggleVisible() {
+        visible = !visible;
+        BetterBundleConfig.getInstance().setPanelVisible(visible);
+    }
 
     // --- category button layout ---
 
