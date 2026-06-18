@@ -12,5 +12,10 @@
     "config.better-bundle.option.toggleButtonPosition.right": "右侧",
     "config.better-bundle.option.toggleButtonPosition.off": "关闭",
     "config.better-bundle.option.panelVisible": "显示收纳袋面板",
-    "config.better-bundle.option.panelVisible.tooltip": "切换收纳袋管理面板的显示状态"
+    "config.better-bundle.option.panelVisible.tooltip": "切换收纳袋管理面板的显示状态",
+    "config.better-bundle.option.bundleInBundleMode": "收纳袋套娃模式",
+    "config.better-bundle.option.bundleInBundleMode.tooltip": "控制是否允许通过模组功能将收纳袋放入其他收纳袋。警告：开启后可能会出现错误选择收纳袋的 bug。",
+    "config.better-bundle.option.bundleInBundleMode.allowed": "允许",
+    "config.better-bundle.option.bundleInBundleMode.shortcut_only": "仅快捷键禁止",
+    "config.better-bundle.option.bundleInBundleMode.not_allowed": "不允许（推荐）"
 }

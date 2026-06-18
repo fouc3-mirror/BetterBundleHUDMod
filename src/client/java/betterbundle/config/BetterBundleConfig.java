@@ -20,11 +20,19 @@ public class BetterBundleConfig {
         OFF     // No toggle button
     }
     
+    // Bundle in bundle insert mode options
+    public enum BundleInBundleMode {
+        ALLOWED,        // Allow all methods (default)
+        SHORTCUT_ONLY,  // Only shortcut (space+click) not allowed
+        NOT_ALLOWED     // Not allowed at all (including panel)
+    }
+    
     // Config options
     private boolean showStackOverlay = true;
     private boolean stackSameNbt = true; // Merge items with same NBT in GUI
     private ToggleButtonPosition toggleButtonPosition = ToggleButtonPosition.RIGHT;
     private boolean panelVisible = true; // Bundle panel visibility
+    private BundleInBundleMode bundleInBundleMode = BundleInBundleMode.NOT_ALLOWED; // Default: not allowed
     
     private static BetterBundleConfig instance;
     
@@ -51,11 +59,14 @@ public class BetterBundleConfig {
             toggleButtonPosition = ToggleButtonPosition.valueOf(
                     props.getProperty("toggleButtonPosition", "RIGHT").toUpperCase());
             panelVisible = Boolean.parseBoolean(props.getProperty("panelVisible", "true"));
+            bundleInBundleMode = BundleInBundleMode.valueOf(
+                    props.getProperty("bundleInBundleMode", "ALLOWED").toUpperCase());
         } catch (IOException e) {
             // Ignore errors, use defaults
         } catch (IllegalArgumentException e) {
-            // Invalid enum value, use default
+            // Invalid enum value, use defaults
             toggleButtonPosition = ToggleButtonPosition.RIGHT;
+            bundleInBundleMode = BundleInBundleMode.ALLOWED;
         }
     }
     
@@ -68,6 +79,7 @@ public class BetterBundleConfig {
             props.setProperty("stackSameNbt", String.valueOf(stackSameNbt));
             props.setProperty("toggleButtonPosition", toggleButtonPosition.name());
             props.setProperty("panelVisible", String.valueOf(panelVisible));
+            props.setProperty("bundleInBundleMode", bundleInBundleMode.name());
             
             try (OutputStream os = Files.newOutputStream(CONFIG_PATH)) {
                 props.store(os, "BetterBundleHUD Configuration");
@@ -113,6 +125,15 @@ public class BetterBundleConfig {
         save();
         // Also update BundlePanelRenderer.visible
         BundlePanelRendererUpdater.updateVisible(value);
+    }
+    
+    public BundleInBundleMode bundleInBundleMode() {
+        return bundleInBundleMode;
+    }
+    
+    public void setBundleInBundleMode(BundleInBundleMode value) {
+        bundleInBundleMode = value;
+        save();
     }
     
     /**

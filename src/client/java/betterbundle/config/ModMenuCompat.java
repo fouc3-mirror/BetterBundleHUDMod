@@ -71,6 +71,18 @@ public class ModMenuCompat implements ModMenuApi {
                 .setSaveConsumer(value -> config.setPanelVisible(value))
                 .build());
         
+        // Bundle in bundle mode option
+        general.addEntry(entryBuilder.startEnumSelector(
+                Text.translatable("config.better-bundle.option.bundleInBundleMode"),
+                BetterBundleConfig.BundleInBundleMode.class,
+                config.bundleInBundleMode()
+        )
+                .setDefaultValue(BetterBundleConfig.BundleInBundleMode.NOT_ALLOWED)
+                .setEnumNameProvider(mode -> Text.translatable("config.better-bundle.option.bundleInBundleMode." + mode.name().toLowerCase()))
+                .setTooltip(Text.translatable("config.better-bundle.option.bundleInBundleMode.tooltip"))
+                .setSaveConsumer(value -> config.setBundleInBundleMode(value))
+                .build());
+        
         return builder.build();
     }
 }

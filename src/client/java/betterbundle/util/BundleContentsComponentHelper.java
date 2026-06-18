@@ -37,7 +37,23 @@ public final class BundleContentsComponentHelper {
             currentWeight = Fraction.ZERO; // empty/unused bundle
         }
 
-        Fraction itemWeight = Fraction.getFraction(toInsert.getCount(), toInsert.getMaxCount());
+        // Calculate item weight
+        // For bundle items, the weight is the occupancy of its contents (empty bundle = 0)
+        // This matches vanilla behavior where bundles can contain other bundles
+        Fraction itemWeight;
+        if (toInsert.getItem() instanceof BundleItem) {
+            // Bundle as item: weight = occupancy of its contents
+            BundleContentsComponent toInsertContents = getContents(toInsert);
+            if (toInsertContents != null && !toInsertContents.isEmpty()) {
+                itemWeight = toInsertContents.getOccupancy();
+            } else {
+                itemWeight = Fraction.ZERO; // empty bundle has weight 0
+            }
+        } else {
+            // Normal item: weight = count / maxCount
+            itemWeight = Fraction.getFraction(toInsert.getCount(), toInsert.getMaxCount());
+        }
+        
         return currentWeight.add(itemWeight).compareTo(Fraction.ONE) <= 0;
     }
 }

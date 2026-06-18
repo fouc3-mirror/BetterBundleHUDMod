@@ -12,5 +12,10 @@
     "config.better-bundle.option.toggleButtonPosition.right": "Right",
     "config.better-bundle.option.toggleButtonPosition.off": "Off",
     "config.better-bundle.option.panelVisible": "Show Bundle Panel",
-    "config.better-bundle.option.panelVisible.tooltip": "Toggle the bundle management panel visibility"
+    "config.better-bundle.option.panelVisible.tooltip": "Toggle the bundle management panel visibility",
+    "config.better-bundle.option.bundleInBundleMode": "Bundle in Bundle Mode",
+    "config.better-bundle.option.bundleInBundleMode.tooltip": "Control whether bundles can be inserted into other bundles via mod features. WARNING: Enabling this may cause incorrect bundle selection bugs.",
+    "config.better-bundle.option.bundleInBundleMode.allowed": "Allowed",
+    "config.better-bundle.option.bundleInBundleMode.shortcut_only": "Shortcut Only Blocked",
+    "config.better-bundle.option.bundleInBundleMode.not_allowed": "Not Allowed (Recommended)"
 }

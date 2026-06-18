@@ -9,17 +9,49 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.screen.slot.SlotActionType;
 import net.minecraft.screen.slot.Slot;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.BundleItem;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
 
 import betterbundle.util.BundleContentsComponentHelper;
+import betterbundle.config.BetterBundleConfig;
+import betterbundle.config.BetterBundleConfig.BundleInBundleMode;
 
 public final class BundlePanelInteraction {
 
     private static final int GLFW_MOD_SHIFT = 0x1;
 
     private BundlePanelInteraction() {}
+
+    /**
+     * Check if bundle-in-bundle insertion is allowed based on config and context.
+     * @param isShortcut true if this is a shortcut operation (space+click)
+     * @param isPanel true if this is from the bundle panel
+     * @return true if allowed, false if blocked
+     */
+    private static boolean isBundleInBundleAllowed(boolean isShortcut, boolean isPanel) {
+        BundleInBundleMode mode = BetterBundleConfig.getInstance().bundleInBundleMode();
+        switch (mode) {
+            case ALLOWED:
+                return true;
+            case SHORTCUT_ONLY:
+                // Only block shortcut operations
+                return !isShortcut;
+            case NOT_ALLOWED:
+                // Block all mod operations (shortcut and panel)
+                return false;
+            default:
+                return true;
+        }
+    }
+
+    /**
+     * Check if the given stack is a bundle item.
+     */
+    private static boolean isBundleItem(ItemStack stack) {
+        return stack != null && !stack.isEmpty() && stack.getItem() instanceof BundleItem;
+    }
 
     private static int gridX(int leftPos) {
         int pw = BundlePanelRenderer.panelWidth();
@@ -127,9 +159,29 @@ public final class BundlePanelInteraction {
         ItemStack stack = hoveredSlot.getStack();
         if (stack.isEmpty() || BundleContentsComponentHelper.isNonEmptyBundle(stack)) return false;
 
+        // Check if trying to insert a bundle into a bundle
+        if (isBundleItem(stack)) {
+            if (!isBundleInBundleAllowed(true, false)) {
+                return false; // Block bundle-in-bundle via shortcut
+            }
+        }
+
+        // Find a target bundle that can fit the item, excluding the hovered slot itself
         List<BundlePanelRenderer.BundleSlotEntry> bundles = BundlePanelRenderer.getAllBundles();
         int targetBundleSlot = -1;
+        
+        // Get the player inventory index of the hovered slot
+        // In player inventory, slot.getIndex() returns 0-35
+        // In other containers, we need to check if the slot is in player inventory
+        int hoveredInvIndex = -1;
+        if (hoveredSlot.inventory == player.getInventory()) {
+            hoveredInvIndex = hoveredSlot.getIndex();
+        }
+        
         for (BundlePanelRenderer.BundleSlotEntry entry : bundles) {
+            // Skip the hovered slot itself to prevent self-insert
+            // bundleSlot() returns the player inventory index (0-35)
+            if (hoveredInvIndex >= 0 && entry.bundleSlot() == hoveredInvIndex) continue;
             if (BundleContentsComponentHelper.canFitItem(entry.bundleStack(), stack)) {
                 targetBundleSlot = entry.bundleSlot();
                 break;
@@ -196,6 +248,15 @@ public final class BundlePanelInteraction {
         ItemStack cursor = player.currentScreenHandler.getCursorStack();
         if (cursor.isEmpty()) return false;
 
+        // Check if trying to insert a bundle into a bundle via panel
+        if (isBundleItem(cursor)) {
+            if (!isBundleInBundleAllowed(false, true)) {
+                return false; // Block bundle-in-bundle via panel
+            }
+        }
+
+        // Find a target bundle that can fit the cursor item
+        // Note: cursor item is not in any slot, so no need to exclude any slot
         List<BundlePanelRenderer.BundleSlotEntry> bundles = BundlePanelRenderer.getAllBundles();
         int targetBundleSlot = -1;
         for (BundlePanelRenderer.BundleSlotEntry entry : bundles) {
