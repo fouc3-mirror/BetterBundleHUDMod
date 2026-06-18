@@ -11,6 +11,9 @@
     "entrypoints": {
         "client": [
             "betterbundle.BetterBundleMod"
+        ],
+        "modmenu": [
+            "betterbundle.config.ModMenuCompat"
         ]
     },
     "accessWidener": "better-bundle.accesswidener",

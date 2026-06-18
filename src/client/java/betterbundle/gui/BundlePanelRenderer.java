@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Locale;
 
 import betterbundle.util.BundleContentsComponentHelper;
+import betterbundle.config.BetterBundleConfig;
 
 public final class BundlePanelRenderer {
 
@@ -310,8 +311,10 @@ public final class BundlePanelRenderer {
                 FlatItem fi = items.get(flatIndex);
                 ItemStack stack = fi.stack();
                 graphics.drawItem(stack, sx + 1, sy + 1);
-                // Draw stack overlay (includes count and durability bar)
-                graphics.drawStackOverlay(font, stack, sx + 1, sy + 1);
+                // Draw stack overlay (includes count and durability bar) based on config
+                if (BetterBundleConfig.getInstance().showStackOverlay()) {
+                    graphics.drawStackOverlay(font, stack, sx + 1, sy + 1);
+                }
 
                 if (mouseX >= sx && mouseX < sx + SLOT_SIZE && mouseY >= sy && mouseY < sy + SLOT_SIZE) {
                     hoveredFlatIndex = flatIndex;
