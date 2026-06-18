@@ -9,6 +9,69 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        version:
+          - mc: "1.21.2"
+            yarn: "1.21.2+build.1"
+            fabric_api: "0.106.1+1.21.2"
+            loom: "1.10"
+            loader: "0.16.7"
+            loom_plugin: "1.10.5"
+          - mc: "1.21.3"
+            yarn: "1.21.3+build.2"
+            fabric_api: "0.114.1+1.21.3"
+            loom: "1.10"
+            loader: "0.16.7"
+            loom_plugin: "1.10.5"
+          - mc: "1.21.4"
+            yarn: "1.21.4+build.4"
+            fabric_api: "0.111.0+1.21.4"
+            loom: "1.10"
+            loader: "0.16.7"
+            loom_plugin: "1.10.5"
+          - mc: "1.21.5"
+            yarn: "1.21.5+build.1"
+            fabric_api: "0.115.0+1.21.5"
+            loom: "1.10"
+            loader: "0.16.7"
+            loom_plugin: "1.10.5"
+          - mc: "1.21.6"
+            yarn: "1.21.6+build.1"
+            fabric_api: "0.127.0+1.21.6"
+            loom: "1.10"
+            loader: "0.16.14"
+            loom_plugin: "1.10.5"
+          - mc: "1.21.7"
+            yarn: "1.21.7+build.1"
+            fabric_api: "0.129.0+1.21.7"
+            loom: "1.10"
+            loader: "0.16.14"
+            loom_plugin: "1.10.5"
+          - mc: "1.21.8"
+            yarn: "1.21.8+build.1"
+            fabric_api: "0.129.0+1.21.8"
+            loom: "1.10"
+            loader: "0.16.14"
+            loom_plugin: "1.10.5"
+          - mc: "1.21.9"
+            yarn: "1.21.9+build.1"
+            fabric_api: "0.130.0+1.21.9"
+            loom: "1.11"
+            loader: "0.16.14"
+            loom_plugin: "1.11.8"
+          - mc: "1.21.10"
+            yarn: "1.21.10+build.2"
+            fabric_api: "0.131.0+1.21.10"
+            loom: "1.11"
+            loader: "0.16.14"
+            loom_plugin: "1.11.8"
+          - mc: "1.21.11"
+            yarn: "1.21.11+build.1"
+            fabric_api: "0.132.0+1.21.11"
+            loom: "1.11"
+            loader: "0.16.14"
+            loom_plugin: "1.11.8"
     
     steps:
       - name: Checkout repository
@@ -23,14 +86,54 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         
-      - name: Make build script executable
-        run: chmod +x build-all-versions.sh
+      - name: Update gradle.properties
+        run: |
+          sed -i \
+            -e "s/minecraft_version=.*/minecraft_version=${{ matrix.version.mc }}/" \
+            -e "s/yarn_mappings=.*/yarn_mappings=${{ matrix.version.yarn }}/" \
+            -e "s/loader_version=.*/loader_version=${{ matrix.version.loader }}/" \
+            -e "s/loom_version=.*/loom_version=${{ matrix.version.loom }}/" \
+            -e "s/fabric_api_version=.*/fabric_api_version=${{ matrix.version.fabric_api }}/" \
+            gradle.properties
+            
+      - name: Update build.gradle loom version
+        run: |
+          sed -i "s/id 'fabric-loom' version '[^']*'/id 'fabric-loom' version '${{ matrix.version.loom_plugin }}'/g" build.gradle
+          
+      - name: Build
+        run: ./gradlew build --no-build-cache
         
-      - name: Build all versions
-        run: ./build-all-versions.sh
+      - name: Rename JAR
+        run: |
+          mkdir -p build/output
+          if [ -f "build/libs/better-bundle-1.2.0.jar" ]; then
+            mv "build/libs/better-bundle-1.2.0.jar" "build/output/better-bundle-1.2.0+${{ matrix.version.mc }}.jar"
+          fi
+          
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: better-bundle-${{ matrix.version.mc }}
+          path: build/output/*.jar
+          retention-days: 1
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
         
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: build/output
+          pattern: better-bundle-*
+          merge-multiple: true
+          
       - name: List built files
-        run: ls -la build/multi-version/
+        run: ls -la build/output/
         
       - name: Get tag name
         id: tag
@@ -43,7 +146,7 @@ jobs:
           name: Release ${{ steps.tag.outputs.TAG_NAME }}
           draft: false
           prerelease: ${{ startsWith(steps.tag.outputs.TAG_NAME, 'test') }}
-          files: build/multi-version/*.jar
+          files: build/output/*.jar
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
